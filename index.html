@@ -623,15 +623,21 @@
 
         /* ---------- RESPONSIVE ---------- */
         @media (max-width: 768px) {
-            .biz-card { display: none; }
-            #chartCanvas { width: 160px; height: 80px; bottom: 140px; }
-            #blossomCanvas { display: none; }
-            .ornament { display: none; }
+            #chartCanvas { width: 120px; height: 70px; bottom: 120px; right: 3%; }
+            .biz-card { width: 130px; height: 75px; font-size: 9px; padding: 8px; }
+            .biz-card.card1 { top: 10%; left: 3%; }
+            .biz-card.card2 { top: 30%; right: 2%; }
             .ticker-item { font-size: 11px; margin-right: 30px; }
             .floating-shape { display: none; }
-            .lantern { display: none; }
-            .coin-3d { display: none; }
-            .dollar-float { font-size: 28px; }
+            .lantern { width: 20px; height: 32px; }
+            .lantern .glow { inset: -8px; }
+            .coin-3d { width: 35px; height: 35px; }
+            .coin-3d:nth-child(2) { width: 28px; height: 28px; }
+            .dollar-float { font-size: 24px; }
+            .ornament { width: 35px; height: 35px; }
+            .ornament:nth-child(4) { width: 35px; height: 35px; }
+            .ornament:nth-child(5) { width: 28px; height: 28px; }
+            .ornament:nth-child(6) { width: 24px; height: 24px; }
             .counter-container { flex-wrap: wrap; }
             #business .content, #daughter .content, #money .content { padding: 20px; }
         }
