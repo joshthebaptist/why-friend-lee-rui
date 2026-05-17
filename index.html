@@ -320,21 +320,67 @@
             transform: translateY(0);
         }
 
-        /* pixel art canvas */
-        #pixelCanvas {
+        /* cherry blossom canvas */
+        #blossomCanvas {
             position: absolute;
-            bottom: 150px;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s ease 0.5s;
+            z-index: 1;
+        }
+        #daughter.active #blossomCanvas {
+            opacity: 0.7;
+        }
+
+        /* mist overlay */
+        #daughter .mist {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(to top, rgba(26,10,10,0.95) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* floating Chinese ornaments */
+        .ornament {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(212,160,23,0.15);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: ornamentFloat 10s ease-in-out infinite;
+        }
+        .ornament::before {
+            content: '';
+            position: absolute;
+            top: -8px;
             left: 50%;
             transform: translateX(-50%);
-            width: 200px;
-            height: 160px;
-            image-rendering: pixelated;
-            opacity: 0;
-            transition: opacity 1.5s ease 0.8s;
+            width: 2px;
+            height: 10px;
+            background: rgba(212,160,23,0.2);
         }
-        #daughter.active #pixelCanvas {
-            opacity: 1;
+        .ornament::after {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border: 1px solid rgba(212,160,23,0.1);
+            border-radius: 50%;
         }
+        @keyframes ornamentFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(180deg); }
+        }
+        .ornament:nth-child(4) { top: 18%; right: 6%; animation-delay: 0s; width: 50px; height: 50px; }
+        .ornament:nth-child(5) { bottom: 35%; left: 5%; animation-delay: 3s; width: 40px; height: 40px; }
+        .ornament:nth-child(6) { top: 55%; right: 3%; animation-delay: 6s; width: 35px; height: 35px; }
 
         /* lanterns */
         .lantern {
@@ -579,7 +625,8 @@
         @media (max-width: 768px) {
             .biz-card { display: none; }
             #chartCanvas { width: 160px; height: 80px; bottom: 140px; }
-            #pixelCanvas { width: 140px; height: 112px; bottom: 120px; }
+            #blossomCanvas { display: none; }
+            .ornament { display: none; }
             .ticker-item { font-size: 11px; margin-right: 30px; }
             .floating-shape { display: none; }
             .lantern { display: none; }
@@ -633,7 +680,11 @@
     <div class="lantern"><div class="glow"></div></div>
     <div class="lantern"><div class="glow"></div></div>
 
-    <canvas id="pixelCanvas"></canvas>
+    <canvas id="blossomCanvas"></canvas>
+    <div class="mist"></div>
+    <div class="ornament"></div>
+    <div class="ornament"></div>
+    <div class="ornament"></div>
 
     <div class="content">
         <div class="section-label">Thesis Two</div>
@@ -642,7 +693,7 @@
         <div class="description">
             As the daughter of Elder Han Meng, Lee Rui carries a legacy of wisdom that spans generations.
             A respected elder in the Chinese community, Han Meng raised a daughter who blends ancient
-            wisdom with modern ambition — a perfect harmony of tradition and progress.
+            wisdom with modern ambition, a perfect harmony of tradition and progress.
             The apple does not fall far from the tree: both share an unwavering determination,
             deep integrity, and a generous heart for their community.
         </div>
@@ -904,167 +955,126 @@
     }
 
     // ============================================================
-    // SECTION 2: PIXEL ART
+    // SECTION 2: CHERRY BLOSSOM PETALS
     // ============================================================
-    const pixelCanvas = document.getElementById('pixelCanvas');
-    if (pixelCanvas) {
-        const pctx = pixelCanvas.getContext('2d');
-        const PIXEL = 8;
-        const COLS = 50;
-        const ROWS = 40;
+    const blossomCanvas = document.getElementById('blossomCanvas');
+    let blossomCtx, blossomW, blossomH, petals = [];
+    let blossomAnimId = null;
+    let blossomRunning = false;
 
-        function resizePixelCanvas() {
+    if (blossomCanvas) {
+        blossomCtx = blossomCanvas.getContext('2d');
+
+        function resizeBlossom() {
             const section = document.getElementById('daughter');
             const rect = section.getBoundingClientRect();
-            const maxW = Math.min(200, rect.width * 0.5);
-            const scale = maxW / (COLS * PIXEL);
-            pixelCanvas.width = COLS * PIXEL * scale * 2;
-            pixelCanvas.height = ROWS * PIXEL * scale * 2;
-            pixelCanvas.style.width = (COLS * PIXEL * scale) + 'px';
-            pixelCanvas.style.height = (ROWS * PIXEL * scale) + 'px';
-            pctx.imageSmoothingEnabled = false;
-            pctx.scale(scale * 2, scale * 2);
+            blossomCanvas.width = rect.width * 2;
+            blossomCanvas.height = rect.height * 2;
+            blossomCanvas.style.width = rect.width + 'px';
+            blossomCanvas.style.height = rect.height + 'px';
+            blossomW = rect.width;
+            blossomH = rect.height;
         }
-        resizePixelCanvas();
-        window.addEventListener('resize', resizePixelCanvas);
+        resizeBlossom();
+        window.addEventListener('resize', resizeBlossom);
 
-        function drawPixel(x, y, color) {
-            pctx.fillStyle = color;
-            pctx.fillRect(x * PIXEL, y * PIXEL, PIXEL, PIXEL);
-        }
+        const petalColors = ['#f8c8d8', '#f5b0c8', '#f2a0b8', '#fad0e0', '#fce4ec'];
 
-        function drawPixelArt() {
-            pctx.clearRect(0, 0, COLS * PIXEL, ROWS * PIXEL);
-
-            // --- Elder Han Meng (left side) ---
-            // Hair (white/grey)
-            const whiteHair = '#d4d4d4';
-            const darkHair = '#a0a0a0';
-            // Face
-            const skin = '#e8c99b';
-            const darkSkin = '#d4a878';
-            // Robe
-            const robe = '#8b1a1a';
-            const robeDark = '#6b1212';
-            const robeTrim = '#d4a017';
-            // Eyes
-            const eye = '#2c1810';
-
-            // Head (elder)
-            for (let y = 4; y <= 12; y++) {
-                for (let x = 6; x <= 20; x++) {
-                    // hair
-                    if (y >= 4 && y <= 6 && x >= 7 && x <= 19) drawPixel(x, y, whiteHair);
-                    if (y === 5 && (x === 8 || x === 18)) drawPixel(x, y, darkHair);
-                    // face
-                    if (y >= 7 && y <= 12 && x >= 8 && x <= 18) drawPixel(x, y, skin);
-                    // hair sides
-                    if ((x === 7 || x === 19) && y >= 7 && y <= 9) drawPixel(x, y, whiteHair);
+        class Petal {
+            constructor() {
+                this.reset(true);
+            }
+            reset(init) {
+                this.x = Math.random() * blossomW;
+                this.y = init ? Math.random() * blossomH : -20;
+                this.size = 4 + Math.random() * 8;
+                this.color = petalColors[Math.floor(Math.random() * petalColors.length)];
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.03;
+                this.swing = Math.random() * 2 + 1;
+                this.swingSpeed = 0.01 + Math.random() * 0.02;
+                this.swingOffset = Math.random() * Math.PI * 2;
+                this.speedY = 0.3 + Math.random() * 0.6;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.opacity = 0.4 + Math.random() * 0.4;
+                this.time = 0;
+            }
+            update() {
+                this.time += this.swingSpeed;
+                this.x += this.speedX + Math.sin(this.time + this.swingOffset) * this.swing * 0.3;
+                this.y += this.speedY;
+                this.rotation += this.rotSpeed;
+                if (this.y > blossomH + 20 || this.x < -30 || this.x > blossomW + 30) {
+                    this.reset(false);
                 }
             }
-            // eyes
-            drawPixel(10, 9, eye);
-            drawPixel(16, 9, eye);
-            // eyebrows (white)
-            drawPixel(10, 8, whiteHair);
-            drawPixel(16, 8, whiteHair);
-            // nose
-            drawPixel(13, 10, darkSkin);
-            // mouth
-            drawPixel(12, 12, '#8b4513');
-            drawPixel(13, 12, '#8b4513');
-            drawPixel(14, 12, '#8b4513');
-            // beard (white)
-            for (let x = 10; x <= 16; x++) {
-                if (x === 10 || x === 16) continue;
-                drawPixel(x, 13, whiteHair);
-                drawPixel(x, 14, whiteHair);
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size, this.size * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             }
-            drawPixel(11, 15, whiteHair);
-            drawPixel(15, 15, whiteHair);
-
-            // Body (robe)
-            for (let y = 13; y <= 24; y++) {
-                for (let x = 5; x <= 21; x++) {
-                    if (y >= 13 && y <= 15 && x >= 6 && x <= 20) {
-                        if (y === 13 && (x === 10 || x === 16)) continue; // neck gap
-                        drawPixel(x, y, robe);
-                    }
-                    if (y >= 16 && y <= 24 && x >= 5 && x <= 21) drawPixel(x, y, robe);
-                }
-            }
-            // robe trim
-            for (let y = 13; y <= 24; y++) {
-                drawPixel(5, y, robeTrim);
-                drawPixel(21, y, robeTrim);
-            }
-            // collar
-            drawPixel(10, 13, robeTrim);
-            drawPixel(11, 13, robeTrim);
-            drawPixel(15, 13, robeTrim);
-            drawPixel(16, 13, robeTrim);
-
-            // --- Lee Rui (right side) ---
-            // Hair (black)
-            const blackHair = '#1a1a2e';
-            const hairShine = '#2a2a4e';
-
-            for (let y = 4; y <= 12; y++) {
-                for (let x = 26; x <= 40; x++) {
-                    if (y >= 4 && y <= 6 && x >= 27 && x <= 39) drawPixel(x, y, blackHair);
-                    if (y === 4 && (x === 30 || x === 36)) drawPixel(x, y, hairShine);
-                    if (y >= 7 && y <= 12 && x >= 28 && x <= 38) drawPixel(x, y, skin);
-                    if ((x === 27 || x === 39) && y >= 7 && y <= 9) drawPixel(x, y, blackHair);
-                }
-            }
-            // hair length
-            for (let x = 28; x <= 38; x++) {
-                if (x === 30 || x === 36) continue;
-                drawPixel(x, 13, blackHair);
-                drawPixel(x, 14, blackHair);
-            }
-            // face
-            drawPixel(30, 9, eye);
-            drawPixel(36, 9, eye);
-            // nose
-            drawPixel(33, 10, darkSkin);
-            // smile
-            drawPixel(31, 12, '#c4717a');
-            drawPixel(32, 12, '#c4717a');
-            drawPixel(33, 12, '#c4717a');
-            drawPixel(34, 12, '#c4717a');
-            drawPixel(35, 12, '#c4717a');
-
-            // Body (modern top)
-            const top = '#2d5a87';
-            const topLight = '#3a7ab5';
-            for (let y = 15; y <= 24; y++) {
-                for (let x = 26; x <= 40; x++) {
-                    drawPixel(x, y, top);
-                }
-            }
-            // collar detail
-            drawPixel(30, 15, topLight);
-            drawPixel(31, 15, topLight);
-            drawPixel(35, 15, topLight);
-            drawPixel(36, 15, topLight);
         }
 
-        // delay drawing until section is visible
-        const daughterObserver = new IntersectionObserver((entries) => {
+        function initPetals(count) {
+            petals = [];
+            for (let i = 0; i < count; i++) {
+                petals.push(new Petal());
+            }
+        }
+
+        function drawPetals() {
+            if (!blossomCtx) return;
+            blossomCtx.clearRect(0, 0, blossomCanvas.width, blossomCanvas.height);
+            blossomCtx.scale(2, 2);
+            petals.forEach(p => p.draw(blossomCtx));
+            blossomCtx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+
+        function animateBlossom() {
+            if (!blossomRunning) return;
+            petals.forEach(p => p.update());
+            drawPetals();
+            blossomAnimId = requestAnimationFrame(animateBlossom);
+        }
+
+        const blossomObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    setTimeout(drawPixelArt, 300);
+                    if (!blossomRunning) {
+                        const w = blossomCanvas.width / 2;
+                        if (w > 0 && !petals.length) {
+                            initPetals(Math.floor(w * 0.08));
+                        }
+                        blossomRunning = true;
+                        animateBlossom();
+                    }
+                } else {
+                    blossomRunning = false;
+                    if (blossomAnimId) {
+                        cancelAnimationFrame(blossomAnimId);
+                        blossomAnimId = null;
+                    }
                 }
             });
-        }, { threshold: 0.3 });
-        daughterObserver.observe(document.getElementById('daughter'));
+        }, { threshold: 0.1 });
+        blossomObserver.observe(document.getElementById('daughter'));
 
-        // draw immediately if already visible
+        // start if already visible
         const dSection = document.getElementById('daughter');
         const dRect = dSection.getBoundingClientRect();
         if (dRect.top < window.innerHeight && dRect.bottom > 0) {
-            setTimeout(drawPixelArt, 300);
+            setTimeout(() => {
+                const w = blossomCanvas.width / 2;
+                if (w > 0) initPetals(Math.floor(w * 0.08));
+                blossomRunning = true;
+                animateBlossom();
+            }, 500);
         }
     }
 
